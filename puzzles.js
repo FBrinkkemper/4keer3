@@ -130,5 +130,17 @@ window.FOUR_KEER_DRIE_PUZZLES = [
       { id: "contact", label: "Communicatie", words: ["lijn", "kabel", "verbinding"] },
       { id: "veld", label: "Sportveld", words: ["lijn", "doel", "middenstip"] }
     ]
+  },
+  {
+    id: "2026-06-29",
+    date: "2026-06-29",
+    number: 11,
+    special: "advocaat",
+    categories: [
+      { id: "drankje", label: "Drankje", words: ["advocaat", "geel", "room"] },
+      { id: "rechtspraak", label: "Rechtspraak", words: ["advocaat", "verdediging", "uitspraak"] },
+      { id: "aat", label: "__aat", words: ["advocaat", "graat", "piraat"] },
+      { id: "dick", label: "Achternamen van Dick", words: ["advocaat", "schoof", "Jol"] }
+    ]
   }
 ];

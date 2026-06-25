@@ -11,6 +11,7 @@
   var archiveFutureUnlocked = false;
   var archiveLongPressTimer = null;
   var temporaryMessageTimer = null;
+  var resultFlairTimer = null;
 
   var els = {
     app: document.getElementById("app"),
@@ -48,6 +49,7 @@
   var dailyPuzzle = getDailyPuzzle();
   var currentPuzzle = getInitialPuzzle();
   var state = loadState(currentPuzzle);
+  var wasCompleteOnLastRender = isComplete();
 
   bindEvents();
   render();
@@ -130,6 +132,7 @@
 
   function render() {
     var complete = isComplete();
+    var becameComplete = complete && !wasCompleteOnLastRender;
 
     els.puzzleLabel.textContent = "#" + currentPuzzle.number + " · " + formatDate(currentPuzzle.date);
     renderDots(els.mistakeLabel, 3, Math.min(state.mistakes, 3), "mistake", "Fouten:");
@@ -154,11 +157,16 @@
       renderScoreBreakdown(scoring);
       renderSharePreview();
       renderInlineScore(scoring);
+      els.resultPanel.classList.toggle("result-win", !isFailed());
+      els.resultPanel.classList.toggle("result-loss", isFailed());
+      if (becameComplete) openResultWithFlair();
     } else {
       closeModal(els.resultPanel);
       els.scoreBreakdown.innerHTML = "";
       clearSharePreview();
+      els.resultPanel.classList.remove("result-win", "result-loss", "show-flair");
     }
+    wasCompleteOnLastRender = complete;
   }
 
   function renderSolvedGroups() {
@@ -430,6 +438,7 @@
     if (!next || next.id === currentPuzzle.id) return;
     currentPuzzle = next;
     state = loadState(currentPuzzle);
+    wasCompleteOnLastRender = isComplete();
     dailyPuzzle = getDailyPuzzle();
     updateUrl();
     closeModals();
@@ -821,6 +830,21 @@
     if (focusTarget) focusTarget.focus({ preventScroll: true });
   }
 
+  function openResultWithFlair() {
+    if (resultFlairTimer) {
+      window.clearTimeout(resultFlairTimer);
+      resultFlairTimer = null;
+    }
+    els.resultPanel.classList.remove("show-flair");
+    void els.resultPanel.offsetWidth;
+    els.resultPanel.classList.add("show-flair");
+    openModal(els.resultPanel);
+    resultFlairTimer = window.setTimeout(function () {
+      els.resultPanel.classList.remove("show-flair");
+      resultFlairTimer = null;
+    }, 1400);
+  }
+
   function closeModals() {
     [els.archiveModal, els.scoringModal, els.resultPanel].forEach(closeModal);
   }
@@ -829,6 +853,13 @@
     modal.classList.remove("open");
     modal.setAttribute("aria-hidden", "true");
     modal.hidden = true;
+    if (modal === els.resultPanel) {
+      modal.classList.remove("show-flair");
+      if (resultFlairTimer) {
+        window.clearTimeout(resultFlairTimer);
+        resultFlairTimer = null;
+      }
+    }
     if (modal === els.archiveModal) {
       archiveFutureUnlocked = false;
       cancelArchiveLongPress();

@@ -530,6 +530,17 @@ h1 {
   background: rgba(29, 37, 35, 0.32);
 }
 
+.modal.result-panel.open {
+  animation: modal-fade-in 180ms ease-out both;
+}
+
+.modal.result-panel.show-flair {
+  background:
+    radial-gradient(circle at 24% 18%, rgba(87, 186, 114, 0.24), transparent 18rem),
+    radial-gradient(circle at 78% 28%, rgba(243, 189, 19, 0.2), transparent 17rem),
+    rgba(29, 37, 35, 0.38);
+}
+
 .result-card {
   width: min(100%, 24rem);
   max-height: min(92dvh, 42rem);
@@ -544,6 +555,56 @@ h1 {
   border: 1px solid #d59d78;
   box-shadow: 0 16px 42px rgba(62, 43, 18, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.68);
   overflow: auto;
+  position: relative;
+  isolation: isolate;
+}
+
+.result-card > * {
+  position: relative;
+  z-index: 2;
+}
+
+.result-panel.show-flair .result-card {
+  animation: result-pop 620ms cubic-bezier(.15, 1.2, .28, 1) both;
+}
+
+.result-panel.show-flair .result-card::before,
+.result-panel.show-flair .result-card::after {
+  content: "";
+  position: absolute;
+  inset: 0.45rem;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.result-panel.show-flair .result-card::before {
+  border-radius: inherit;
+  background:
+    radial-gradient(circle, rgba(87, 186, 114, 0.95) 0 0.18rem, transparent 0.2rem) 8% 12% / 3.2rem 3.2rem,
+    radial-gradient(circle, rgba(243, 189, 19, 0.95) 0 0.16rem, transparent 0.18rem) 92% 16% / 3rem 3rem,
+    radial-gradient(circle, rgba(91, 141, 232, 0.85) 0 0.15rem, transparent 0.17rem) 14% 86% / 3.4rem 3.4rem,
+    radial-gradient(circle, rgba(155, 105, 223, 0.82) 0 0.16rem, transparent 0.18rem) 86% 82% / 3.1rem 3.1rem;
+  animation: result-sparkle 980ms ease-out both;
+}
+
+.result-panel.show-flair .result-card::after {
+  border-radius: inherit;
+  background: linear-gradient(110deg, transparent 18%, rgba(255, 255, 255, 0.78) 45%, transparent 68%);
+  transform: translateX(-105%);
+  animation: result-shine 860ms 120ms ease-out both;
+}
+
+.result-panel.result-loss.show-flair .result-card {
+  animation: result-pop 520ms cubic-bezier(.18, 1, .28, 1) both, result-wobble 420ms 220ms ease-out both;
+}
+
+.result-panel.result-loss.show-flair .result-card::before {
+  background:
+    radial-gradient(circle, rgba(199, 84, 63, 0.9) 0 0.18rem, transparent 0.2rem) 12% 16% / 3rem 3rem,
+    radial-gradient(circle, rgba(243, 189, 19, 0.85) 0 0.16rem, transparent 0.18rem) 88% 18% / 3.1rem 3.1rem,
+    radial-gradient(circle, rgba(124, 113, 96, 0.72) 0 0.15rem, transparent 0.17rem) 16% 84% / 3.2rem 3.2rem,
+    radial-gradient(circle, rgba(199, 84, 63, 0.82) 0 0.16rem, transparent 0.18rem) 84% 82% / 3rem 3rem;
 }
 
 .result-card .control-button {
@@ -609,6 +670,80 @@ h1 {
 .score-badge {
   background: #fff0a6;
   border-color: #d6b145;
+}
+
+@keyframes modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes result-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(1.2rem) scale(0.88);
+  }
+  62% {
+    opacity: 1;
+    transform: translateY(-0.18rem) scale(1.035);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes result-wobble {
+  0%, 100% {
+    transform: translateX(0) scale(1);
+  }
+  30% {
+    transform: translateX(-0.22rem) scale(1);
+  }
+  62% {
+    transform: translateX(0.16rem) scale(1);
+  }
+}
+
+@keyframes result-sparkle {
+  0% {
+    opacity: 0;
+    transform: scale(0.78) rotate(-5deg);
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.18) rotate(4deg);
+  }
+}
+
+@keyframes result-shine {
+  0% {
+    opacity: 0;
+    transform: translateX(-105%);
+  }
+  24% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(105%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal.result-panel.open,
+  .result-panel.show-flair .result-card,
+  .result-panel.result-loss.show-flair .result-card,
+  .result-panel.show-flair .result-card::before,
+  .result-panel.show-flair .result-card::after {
+    animation: none;
+  }
 }
 
 .credits {
