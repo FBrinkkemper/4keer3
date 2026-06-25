@@ -33,7 +33,7 @@
         <p class="message" id="message" role="status">Kies drie woorden die bij elkaar horen.</p>
 
         <section class="progress-row" aria-label="Voortgang">
-          <div class="dot-meter" id="foundLabel" aria-label="Gevonden groepen"></div>
+          <div class="score-meter" id="scoreLabel" aria-label="Score" hidden></div>
           <div class="dot-meter mistake-meter" id="mistakeLabel" aria-label="Fouten"></div>
         </section>
 
@@ -51,7 +51,13 @@
             </div>
             <p id="resultText"></p>
             <div class="score-breakdown" id="scoreBreakdown"></div>
-            <button id="shareButton" class="control-button primary" type="button">Deel</button>
+            <div class="share-preview" id="sharePreview" aria-label="Voorbeeld van gedeelde afbeelding">
+              <canvas id="sharePreviewCanvas" width="1024" height="1024"></canvas>
+            </div>
+            <div class="share-actions">
+              <button id="shareButton" class="control-button" type="button">Deel tekst</button>
+              <button id="shareImageButton" class="control-button primary" type="button">Deel afbeelding</button>
+            </div>
           </div>
         </section>
       </main>
@@ -69,7 +75,7 @@
     <div class="modal" id="archiveModal" aria-hidden="true">
       <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="archiveTitle">
         <div class="modal-head">
-          <h2 id="archiveTitle">Archief</h2>
+          <h2 id="archiveTitle" class="quiet-trigger">Archief</h2>
           <button class="close-button" data-close-modal type="button" aria-label="Sluiten">×</button>
         </div>
         <div class="archive-list" id="archiveList"></div>
@@ -83,37 +89,16 @@
           <button class="close-button" data-close-modal type="button" aria-label="Sluiten">×</button>
         </div>
         <div class="score-rules">
-          <p>Elke winst begint op 100 punten. Je verliest punten voor fouten, krijgt punten voor flair, en daarna komt je dagreeks erbij. Een foutloze run kan strak op 200 uitkomen, plus je reeks.</p>
-          <h3>Fouten</h3>
+          <p>Elke winst begint op 100 punten. Daarna tellen alleen fouten, snelheid en of je de paarse groep als eerste vindt.</p>
+          <h3>Moeilijkheid</h3>
+          <p>De groepen staan op moeilijkheid: groen is het makkelijkst, daarna geel, daarna blauw, en paars is het moeilijkst.</p>
+          <h3>Punten</h3>
           <ul>
             <li>Elke fout: -15</li>
-            <li>Een fout met nog maar twee groepen over: -30</li>
+            <li>Paarse groep eerst: +30</li>
+            <li>Tijdbonus: +90 bij 0 seconden, lineair omlaag naar +0 bij 90 seconden</li>
           </ul>
-          <h3>Bonussen</h3>
-          <ul>
-            <li>Hub Eerst: begin elke gok met het gedeelde woord: +20</li>
-            <li>Hub Midden: zet het gedeelde woord steeds als tweede: +20</li>
-            <li>Blauw Eerst: los de blauwe groep als eerste op: +5</li>
-            <li>Paars Eerst: los de paarse groep als eerste op: +15</li>
-            <li>Omgekeerde Regenboog: paars → blauw → groen → geel: +30</li>
-            <li>Onder 90 seconden: +30</li>
-            <li>Dagreeks: +1 per dag in je huidige reeks</li>
-          </ul>
-          <h3>Alleen voor opscheppen</h3>
-          <ul>
-            <li>🌈 Regenboog: geel → groen → blauw → paars</li>
-            <li>🎾 Grellow: paars → blauw → geel → groen</li>
-            <li>🦚 Grue: paars → groen → blauw → geel</li>
-            <li>😤 God Damnit!: foutloos met Hub Eerst, maar alleen verpest door groen↔geel of groen↔blauw</li>
-          </ul>
-          <h3>Hoogste eer</h3>
-          <ul>
-            <li>Perfect Game: 0 fouten + Hub Eerst + Omgekeerde Regenboog = 200 voor je reeks</li>
-            <li>🥇 Gouden plaquette: Perfect Game onder 90 seconden</li>
-            <li>🥈 Zilveren plaquette: Perfect Game onder 120 seconden</li>
-          </ul>
-          <h3>Regelbreker</h3>
-          <p>RULE BREAKER: zet je het gedeelde woord in elke gok als laatste, dan eindig je op -100. Alles wordt weggeveegd, inclusief je reeksbonus.</p>
+          <p>De tijdbonus is afgerond op hele punten. Na 90 seconden krijg je geen tijdbonus meer.</p>
         </div>
       </div>
     </div>

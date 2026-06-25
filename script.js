@@ -5,14 +5,18 @@
   var TIME_ZONE = "Europe/Amsterdam";
   var STORAGE_PREFIX = "4keer3:state:v2:";
   var MAX_SELECTION = 3;
-  var GROUP_COLORS = ["geel", "groen", "blauw", "paars"];
-  var GROUP_SHADE_COLORS = ["#f8ebaa", "#d9eddf", "#dcecff", "#eee4ff"];
+  var GROUP_COLORS = ["groen", "geel", "blauw", "paars"];
+  var GROUP_SHADE_COLORS = ["#d9eddf", "#f8ebaa", "#dcecff", "#eee4ff"];
   var locked = false;
+  var archiveFutureUnlocked = false;
+  var archiveLongPressTimer = null;
+  var temporaryMessageTimer = null;
 
   var els = {
     app: document.getElementById("app"),
     puzzleLabel: document.getElementById("puzzleLabel"),
-    foundLabel: document.getElementById("foundLabel"),
+    progressRow: document.querySelector(".progress-row"),
+    scoreLabel: document.getElementById("scoreLabel"),
     mistakeLabel: document.getElementById("mistakeLabel"),
     solvedGroups: document.getElementById("solvedGroups"),
     tileGrid: document.getElementById("tileGrid"),
@@ -26,8 +30,11 @@
     resultTitle: document.getElementById("resultTitle"),
     resultText: document.getElementById("resultText"),
     scoreBreakdown: document.getElementById("scoreBreakdown"),
+    sharePreviewCanvas: document.getElementById("sharePreviewCanvas"),
     shareButton: document.getElementById("shareButton"),
+    shareImageButton: document.getElementById("shareImageButton"),
     archiveModal: document.getElementById("archiveModal"),
+    archiveTitle: document.getElementById("archiveTitle"),
     archiveList: document.getElementById("archiveList"),
     scoringButton: document.getElementById("scoringButton"),
     scoringModal: document.getElementById("scoringModal")
@@ -44,6 +51,7 @@
 
   bindEvents();
   render();
+  updateUrl();
   if (!isComplete()) setMessage("Kies drie woorden die bij elkaar horen.", "neutral");
 
   function bindEvents() {
@@ -53,6 +61,11 @@
       toggleWord(tile.dataset.word);
     });
     els.message.addEventListener("click", function (event) {
+      if (event.target.matches("[data-open-result]")) {
+        openModal(els.resultPanel);
+      }
+    });
+    els.scoreLabel.addEventListener("click", function (event) {
       if (event.target.matches("[data-open-result]")) {
         openModal(els.resultPanel);
       }
@@ -70,13 +83,22 @@
       switchPuzzle(dailyPuzzle.id);
     });
     els.archiveButton.addEventListener("click", function () {
+      archiveFutureUnlocked = false;
       renderArchive();
       openModal(els.archiveModal);
     });
     els.scoringButton.addEventListener("click", function () {
-      openModal(isComplete() ? els.resultPanel : els.scoringModal);
+      openModal(els.scoringModal);
     });
     els.shareButton.addEventListener("click", copyShareText);
+    els.shareImageButton.addEventListener("click", shareResultImage);
+    els.archiveTitle.addEventListener("pointerdown", startArchiveLongPress);
+    els.archiveTitle.addEventListener("pointerup", cancelArchiveLongPress);
+    els.archiveTitle.addEventListener("pointerleave", cancelArchiveLongPress);
+    els.archiveTitle.addEventListener("pointercancel", cancelArchiveLongPress);
+    els.archiveTitle.addEventListener("contextmenu", function (event) {
+      event.preventDefault();
+    });
 
     document.addEventListener("click", function (event) {
       if (event.target.matches("[data-close-modal]")) {
@@ -92,13 +114,30 @@
     });
   }
 
+  function startArchiveLongPress() {
+    cancelArchiveLongPress();
+    archiveLongPressTimer = window.setTimeout(function () {
+      archiveFutureUnlocked = true;
+      renderArchive();
+    }, 700);
+  }
+
+  function cancelArchiveLongPress() {
+    if (!archiveLongPressTimer) return;
+    window.clearTimeout(archiveLongPressTimer);
+    archiveLongPressTimer = null;
+  }
+
   function render() {
-    var solvedCount = state.solvedCategoryIds.length;
     var complete = isComplete();
 
     els.puzzleLabel.textContent = "#" + currentPuzzle.number + " · " + formatDate(currentPuzzle.date);
-    renderDots(els.foundLabel, 4, solvedCount, "progress", "Groepen:");
     renderDots(els.mistakeLabel, 3, Math.min(state.mistakes, 3), "mistake", "Fouten:");
+    els.progressRow.classList.toggle("score-visible", complete);
+    if (!complete) {
+      els.scoreLabel.hidden = true;
+      els.scoreLabel.innerHTML = "";
+    }
     els.todayButton.disabled = currentPuzzle.id === dailyPuzzle.id;
 
     renderSolvedGroups();
@@ -113,10 +152,12 @@
       els.resultTitle.textContent = isFailed() ? "Niet gehaald" : "Score " + scoring.score;
       els.resultText.textContent = plural(state.guesses.length, "poging", "pogingen") + " · " + plural(state.mistakes, "fout", "fouten") + " · " + formatElapsed(scoring.elapsedSeconds);
       renderScoreBreakdown(scoring);
+      renderSharePreview();
       renderInlineScore(scoring);
     } else {
       closeModal(els.resultPanel);
       els.scoreBreakdown.innerHTML = "";
+      clearSharePreview();
     }
   }
 
@@ -195,6 +236,20 @@
       }
 
       els.tileGrid.appendChild(button);
+    });
+
+    window.requestAnimationFrame(fitTileLabels);
+  }
+
+  function fitTileLabels() {
+    els.tileGrid.querySelectorAll(".tile").forEach(function (tile) {
+      var size = parseFloat(window.getComputedStyle(tile).fontSize);
+      if (!Number.isFinite(size)) return;
+
+      while (size > 8.5 && (tile.scrollWidth > tile.clientWidth || tile.scrollHeight > tile.clientHeight)) {
+        size -= 0.5;
+        tile.style.fontSize = size + "px";
+      }
     });
   }
 
@@ -370,8 +425,8 @@
     }, 520);
   }
 
-  function switchPuzzle(id) {
-    var next = getPuzzleById(id);
+  function switchPuzzle(id, allowFuture) {
+    var next = allowFuture ? getPuzzleById(id) : getVisiblePuzzleById(id);
     if (!next || next.id === currentPuzzle.id) return;
     currentPuzzle = next;
     state = loadState(currentPuzzle);
@@ -502,6 +557,10 @@
     return state.mistakes >= 3;
   }
 
+  function isFailedState(targetState) {
+    return targetState.mistakes >= 3;
+  }
+
   function getScore(targetState, puzzle) {
     return getScoringResult(targetState, puzzle || currentPuzzle).score;
   }
@@ -523,90 +582,28 @@
     var details = [];
     var badges = [];
     var mistakePenalty = getMistakePenalty(guesses, puzzle);
-    var score = 100 - mistakePenalty;
-    var allGuessesHaveSharedWord = guesses.length > 0 && guesses.every(function (guess) {
-      return guess.words && guess.words.indexOf(puzzle.special) !== -1;
-    });
-    var hubFirst = allGuessesHaveSharedWord && guesses.every(function (guess) {
-      return guess.words[0] === puzzle.special;
-    });
-    var hubMiddle = allGuessesHaveSharedWord && guesses.every(function (guess) {
-      return guess.words[1] === puzzle.special;
-    });
-    var ruleBreaker = allGuessesHaveSharedWord && guesses.every(function (guess) {
-      return guess.words[2] === puzzle.special;
-    });
-    var reverseRainbow = sameOrder(solvedColorOrder, [3, 2, 1, 0]);
-    var rainbow = sameOrder(solvedColorOrder, [0, 1, 2, 3]);
-    var grellow = sameOrder(solvedColorOrder, [3, 2, 0, 1]);
-    var grue = sameOrder(solvedColorOrder, [3, 1, 2, 0]);
-    var streak = isStateComplete(targetState, puzzle) ? getCurrentStreak(puzzle, targetState) : 0;
-    var perfectGame = wrongGuesses.length === 0 && hubFirst && reverseRainbow;
+    var purpleFirst = solvedColorOrder[0] === 3;
+    var purpleBonus = purpleFirst ? 30 : 0;
+    var timeBonus = isStateComplete(targetState, puzzle) && !isFailedState(targetState) ? getTimeBonus(elapsedSeconds) : 0;
+    var score = isFailedState(targetState) ? 0 : Math.max(0, 100 - mistakePenalty + purpleBonus + timeBonus);
 
     details.push("Start: 100");
     if (mistakePenalty) details.push("Fouten: -" + mistakePenalty);
-
-    if (hubFirst) {
-      score += 20;
-      details.push("Hub Eerst: +20");
+    if (timeBonus) details.push("Tijdbonus: +" + timeBonus);
+    if (purpleBonus) {
+      details.push("Paars eerst: +" + purpleBonus);
+      badges.push("Paars eerst");
     }
-    if (hubMiddle) {
-      score += 20;
-      details.push("Hub Midden: +20");
-    }
-    if (solvedColorOrder[0] === 2) {
-      score += 5;
-      details.push("Blauw Eerst: +5");
-    }
-    if (solvedColorOrder[0] === 3) {
-      score += 15;
-      details.push("Paars Eerst: +15");
-    }
-    if (reverseRainbow) {
-      score += 30;
-      details.push("Omgekeerde Regenboog: +30");
-    }
-    if (elapsedSeconds !== null && elapsedSeconds < 90) {
-      score += 30;
-      details.push("Onder 90 seconden: +30");
-    }
-
-    if (rainbow) badges.push("🌈 Regenboog");
-    if (grellow) badges.push("🎾 Grellow");
-    if (grue) badges.push("🦚 Grue");
-    if (wrongGuesses.length === 0 && hubFirst && (grellow || grue)) {
-      badges.push("😤 God Damnit!");
-    }
-
-    if (perfectGame) {
-      score = 200;
-      badges.push("Perfect Game");
-      details.push("Perfect Game: 200");
-      if (elapsedSeconds !== null && elapsedSeconds < 90) {
-        badges.push("🥇 Gouden plaquette");
-      } else if (elapsedSeconds !== null && elapsedSeconds < 120) {
-        badges.push("🥈 Zilveren plaquette");
-      }
-    }
-
-    if (streak) {
-      score += streak;
-      details.push("Dagreeks: +" + streak);
-    }
-
-    if (ruleBreaker) {
-      score = -100;
-      details = ["RULE BREAKER: -100"];
-      badges = ["RULE BREAKER"];
-    }
+    if (isFailedState(targetState)) details.push("Niet gehaald: 0");
 
     return {
       score: score,
       details: details,
       badges: badges,
       elapsedSeconds: elapsedSeconds,
-      streak: streak,
       mistakePenalty: mistakePenalty,
+      timeBonus: timeBonus,
+      purpleBonus: purpleBonus,
       colorOrder: solvedColorOrder.map(function (index) {
         return GROUP_COLORS[index];
       })
@@ -631,18 +628,29 @@
     });
   }
 
-  function getMistakePenalty(guesses, puzzle) {
-    var solvedBefore = 0;
-    return guesses.reduce(function (total, guess) {
-      if (guess.result === "correct") {
-        solvedBefore += 1;
-        return total;
-      }
+  function renderSharePreview() {
+    if (!els.sharePreviewCanvas) return;
+    var context = els.sharePreviewCanvas.getContext("2d");
+    if (!context) return;
+    drawShareImage(context, els.sharePreviewCanvas.width);
+  }
 
-      if (guess.result !== "wrong") return total;
-      var groupsLeft = Number.isFinite(guess.groupsLeft) ? guess.groupsLeft : puzzle.categories.length - solvedBefore;
-      return total + (groupsLeft === 2 ? 30 : 15);
-    }, 0);
+  function clearSharePreview() {
+    if (!els.sharePreviewCanvas) return;
+    var context = els.sharePreviewCanvas.getContext("2d");
+    if (!context) return;
+    context.clearRect(0, 0, els.sharePreviewCanvas.width, els.sharePreviewCanvas.height);
+  }
+
+  function getMistakePenalty(guesses, puzzle) {
+    return guesses.filter(function (guess) {
+      return guess.result === "wrong";
+    }).length * 15;
+  }
+
+  function getTimeBonus(seconds) {
+    if (seconds === null) return 0;
+    return Math.max(0, Math.round(90 - Math.min(seconds, 90)));
   }
 
   function getElapsedSeconds(targetState) {
@@ -714,16 +722,21 @@
     score.className = "score-link";
     score.dataset.openResult = "true";
     score.textContent = isFailed() ? "Niet gehaald" : "Score " + scoring.score;
-    els.message.innerHTML = "";
-    els.message.dataset.tone = "score";
-    els.message.appendChild(score);
+    els.scoreLabel.hidden = false;
+    els.scoreLabel.innerHTML = "";
+    els.scoreLabel.appendChild(score);
   }
 
   function setTemporaryMessage(text, tone) {
+    if (temporaryMessageTimer) {
+      window.clearTimeout(temporaryMessageTimer);
+      temporaryMessageTimer = null;
+    }
     setMessage(text, tone);
     if (!isComplete()) return;
-    window.setTimeout(function () {
-      renderInlineScore(getScoringResult(state, currentPuzzle));
+    temporaryMessageTimer = window.setTimeout(function () {
+      setMessage("", "neutral");
+      temporaryMessageTimer = null;
     }, 1200);
   }
 
@@ -764,13 +777,14 @@
   function renderArchive() {
     els.archiveList.innerHTML = "";
 
-    sortedPuzzles.slice().reverse().forEach(function (puzzle) {
+    getArchivePuzzles().slice().reverse().forEach(function (puzzle) {
       var saved = readStoredState(puzzle);
       var button = document.createElement("button");
       button.type = "button";
       button.className = "archive-item";
       if (puzzle.id === currentPuzzle.id) button.classList.add("current");
       if (puzzle.id === dailyPuzzle.id) button.classList.add("daily");
+      if (!isReleasedPuzzle(puzzle)) button.classList.add("future");
 
       var main = document.createElement("span");
       main.textContent = "#" + puzzle.number + " · " + formatDate(puzzle.date);
@@ -781,13 +795,14 @@
       button.appendChild(main);
       button.appendChild(status);
       button.addEventListener("click", function () {
-        switchPuzzle(puzzle.id);
+        switchPuzzle(puzzle.id, archiveFutureUnlocked);
       });
       els.archiveList.appendChild(button);
     });
   }
 
   function getArchiveStatus(saved, puzzle) {
+    if (!isReleasedPuzzle(puzzle)) return "Gepland";
     if (!saved) return "Niet gestart";
     if (saved.completedAt || saved.solvedCategoryIds.length === 4) {
       return "Klaar · score " + getScore(saved, puzzle);
@@ -814,6 +829,10 @@
     modal.classList.remove("open");
     modal.setAttribute("aria-hidden", "true");
     modal.hidden = true;
+    if (modal === els.archiveModal) {
+      archiveFutureUnlocked = false;
+      cancelArchiveLongPress();
+    }
   }
 
   function copyShareText() {
@@ -843,6 +862,329 @@
       setTemporaryMessage("Kopieren lukte niet automatisch.", "error");
     }
     textarea.remove();
+  }
+
+  function shareResultImage() {
+    if (!isComplete()) {
+      setMessage("Maak de puzzel eerst af.", "warn");
+      return;
+    }
+
+    var originalLabel = els.shareImageButton.textContent;
+    els.shareImageButton.disabled = true;
+    els.shareImageButton.textContent = "Maakt afbeelding...";
+
+    buildShareImageBlob().then(function (blob) {
+      var fileName = "4keer3-" + currentPuzzle.number + ".png";
+      var file = typeof File === "function" ? new File([blob], fileName, { type: "image/png" }) : null;
+
+      if (canUseNativeImageShare(file)) {
+        return navigator.share({
+          files: [file],
+          title: "4 keer 3 #" + currentPuzzle.number,
+          text: buildShareText()
+        }).then(function () {
+          setTemporaryMessage("Afbeelding gedeeld.", "success");
+        }).catch(function (error) {
+          if (error && error.name === "AbortError") throw error;
+          return shareImageFallback(blob, fileName);
+        });
+      }
+
+      return shareImageFallback(blob, fileName);
+    }).catch(function (error) {
+      if (error && error.name === "AbortError") return;
+      setTemporaryMessage("Afbeelding maken lukte niet.", "error");
+    }).finally(function () {
+      els.shareImageButton.disabled = false;
+      els.shareImageButton.textContent = originalLabel;
+    });
+  }
+
+  function canUseNativeImageShare(file) {
+    return Boolean(
+      file &&
+      window.location.protocol === "https:" &&
+      navigator.share &&
+      navigator.canShare &&
+      navigator.canShare({ files: [file] })
+    );
+  }
+
+  function shareImageFallback(blob, fileName) {
+    return copyImageToClipboard(blob).then(function () {
+      setTemporaryMessage("Afbeelding gekopieerd.", "success");
+    }).catch(function () {
+      downloadImageBlob(blob, fileName);
+      setTemporaryMessage("Afbeelding gedownload.", "success");
+    });
+  }
+
+  function copyImageToClipboard(blob) {
+    if (!navigator.clipboard || typeof ClipboardItem !== "function") {
+      return Promise.reject(new Error("Clipboard image writes are unavailable."));
+    }
+    var item = new ClipboardItem({ "image/png": blob });
+    return navigator.clipboard.write([item]);
+  }
+
+  function downloadImageBlob(blob, fileName) {
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(function () {
+      URL.revokeObjectURL(url);
+    }, 1000);
+  }
+
+  function buildShareImageBlob() {
+    return new Promise(function (resolve, reject) {
+      var canvas = document.createElement("canvas");
+      var size = 1024;
+      canvas.width = size;
+      canvas.height = size;
+      var context = canvas.getContext("2d");
+      if (!context) {
+        reject(new Error("Canvas is unavailable."));
+        return;
+      }
+
+      drawShareImage(context, size);
+      canvas.toBlob(function (blob) {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error("Image export failed."));
+        }
+      }, "image/png");
+    });
+  }
+
+  function drawShareImage(context, size) {
+    var colors = ["#57ba72", "#f3bd13", "#5b8de8", "#9b69df"];
+    var scoring = getScoringResult(state, currentPuzzle);
+    var rows = getShareRows();
+    var center = size / 2;
+
+    context.fillStyle = "#f8f5ee";
+    context.fillRect(0, 0, size, size);
+
+    roundedRect(context, 34, 34, size - 68, size - 68, 56);
+    context.fillStyle = "#f8f5ee";
+    context.fill();
+    context.lineWidth = 6;
+    context.strokeStyle = "#d8d2c7";
+    context.stroke();
+
+    drawShareLogo(context, center, 82, colors);
+
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillStyle = "#282522";
+    context.font = "700 34px Avenir Next, Segoe UI, system-ui, sans-serif";
+    context.fillText(formatShareDate(currentPuzzle.date), center, 222);
+
+    context.fillStyle = "#7b746a";
+    context.font = "500 34px Avenir Next, Segoe UI, system-ui, sans-serif";
+    context.fillText(getShareStatus(scoring), center, 272);
+
+    drawShareGrid(context, colors, center, 338, rows);
+
+    context.fillStyle = "#a19a90";
+    context.font = "700 28px Avenir Next, Segoe UI, system-ui, sans-serif";
+    context.fillText("vier groepen · drie woorden · een gedeeld", center, 884);
+
+    context.fillStyle = "#8c857c";
+    context.font = "800 28px Avenir Next, Segoe UI, system-ui, sans-serif";
+    context.fillText(getShareHost(), center, 930);
+  }
+
+  function drawShareLogo(context, center, top, colors) {
+    var blockWidth = 29;
+    var blockHeight = 19;
+    var gap = 6;
+    var totalWidth = colors.length * blockWidth + (colors.length - 1) * gap;
+    var left = center - totalWidth / 2;
+
+    colors.forEach(function (color, index) {
+      drawLogoBlock(context, left + index * (blockWidth + gap), top, blockWidth, blockHeight, color);
+    });
+
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillStyle = "#2b2825";
+    context.font = "900 58px Avenir Next, Segoe UI Black, system-ui, sans-serif";
+    context.fillText("4×3", center, top + 52);
+
+    colors.slice().reverse().forEach(function (color, index) {
+      drawLogoBlock(context, left + index * (blockWidth + gap), top + 74, blockWidth, blockHeight, color);
+    });
+  }
+
+  function drawLogoBlock(context, x, y, width, height, color) {
+    roundedRect(context, x, y, width, height, 4);
+    context.fillStyle = color;
+    context.globalAlpha = 0.55;
+    context.fill();
+    context.globalAlpha = 1;
+  }
+
+  function drawShareGrid(context, colors, center, top, rows) {
+    var layout = getShareGridLayout(rows.length);
+    var tileSize = layout.tileSize;
+    var gap = layout.gap;
+    var left = center - (tileSize * 3 + gap * 2) / 2;
+
+    rows.forEach(function (row, rowIndex) {
+      var y = top + rowIndex * (tileSize + gap);
+
+      row.words.forEach(function (word, columnIndex) {
+        var x = left + columnIndex * (tileSize + gap);
+        var colorIndices = getWordColorIndices(row, word);
+        if (colorIndices.length > 1) {
+          drawSplitShareTile(context, x, y, tileSize, colorIndices.map(function (index) {
+            return colors[index];
+          }));
+        } else {
+          drawSolidShareTile(context, x, y, tileSize, colors[colorIndices[0]]);
+        }
+      });
+    });
+  }
+
+  function getShareGridLayout(rowCount) {
+    var safeRowCount = Math.max(1, rowCount);
+    var gap = safeRowCount > 5 ? 12 : 20;
+    var availableHeight = 506;
+    var tileSize = Math.floor((availableHeight - gap * (safeRowCount - 1)) / safeRowCount);
+    return {
+      tileSize: Math.max(46, Math.min(94, tileSize)),
+      gap: gap
+    };
+  }
+
+  function getShareRows() {
+    var rows = [];
+    var usedCategoryIds = new Set();
+
+    state.guesses.forEach(function (guess) {
+      if (!Array.isArray(guess.words) || guess.words.length !== MAX_SELECTION) return;
+      var category = guess.result === "correct" ? getCategoryById(guess.categoryId) : null;
+      rows.push({
+        result: guess.result,
+        category: category,
+        words: guess.words.slice(0, MAX_SELECTION)
+      });
+      if (category) usedCategoryIds.add(category.id);
+    });
+
+    currentPuzzle.categories.forEach(function (category) {
+      if (usedCategoryIds.has(category.id)) return;
+      rows.push({
+        result: "revealed",
+        category: category,
+        words: getShareRowWords(category, null)
+      });
+    });
+
+    return rows;
+  }
+
+  function getShareRowWords(category, guessedWords) {
+    var special = currentPuzzle.special;
+    var categoryWords = category.words.slice();
+    var source = Array.isArray(guessedWords) && guessedWords.length === MAX_SELECTION ? guessedWords.slice() : null;
+    if (source && source.every(function (word) {
+      return categoryWords.indexOf(word) !== -1;
+    })) {
+      return source;
+    }
+
+    var otherWords = categoryWords.filter(function (word) {
+      return word !== special;
+    });
+    return [otherWords[0], special, otherWords[1]];
+  }
+
+  function getWordColorIndices(row, word) {
+    if (word === currentPuzzle.special) return [0, 1, 2, 3];
+    var indices = [];
+    currentPuzzle.categories.forEach(function (category, index) {
+      if (category.words.indexOf(word) !== -1) indices.push(index);
+    });
+    if (indices.length) return indices;
+    if (row && row.category) {
+      var fallbackIndex = getCategoryColorIndex(currentPuzzle, row.category.id);
+      if (fallbackIndex !== -1) return [fallbackIndex];
+    }
+    return [0];
+  }
+
+  function drawSolidShareTile(context, x, y, size, color) {
+    roundedRect(context, x, y, size, size, 18);
+    context.fillStyle = color;
+    context.fill();
+  }
+
+  function drawSplitShareTile(context, x, y, size, colors) {
+    context.save();
+    roundedRect(context, x, y, size, size, 18);
+    context.clip();
+    context.fillStyle = colors[2] || colors[0];
+    context.fillRect(x, y, size / 2, size / 2);
+    context.fillStyle = colors[0];
+    context.fillRect(x + size / 2, y, size / 2, size / 2);
+    context.fillStyle = colors[3] || colors[0];
+    context.fillRect(x, y + size / 2, size / 2, size / 2);
+    context.fillStyle = colors[1] || colors[0];
+    context.fillRect(x + size / 2, y + size / 2, size / 2, size / 2);
+    context.restore();
+
+    roundedRect(context, x + 3, y + 3, size - 6, size - 6, 16);
+    context.lineWidth = 6;
+    context.strokeStyle = "#d69d00";
+    context.stroke();
+  }
+
+  function roundedRect(context, x, y, width, height, radius) {
+    var safeRadius = Math.min(radius, width / 2, height / 2);
+    context.beginPath();
+    context.moveTo(x + safeRadius, y);
+    context.lineTo(x + width - safeRadius, y);
+    context.arcTo(x + width, y, x + width, y + safeRadius, safeRadius);
+    context.lineTo(x + width, y + height - safeRadius);
+    context.arcTo(x + width, y + height, x + width - safeRadius, y + height, safeRadius);
+    context.lineTo(x + safeRadius, y + height);
+    context.arcTo(x, y + height, x, y + height - safeRadius, safeRadius);
+    context.lineTo(x, y + safeRadius);
+    context.arcTo(x, y, x + safeRadius, y, safeRadius);
+    context.closePath();
+  }
+
+  function getShareStatus(scoring) {
+    if (isFailed()) return "Niet gehaald · " + plural(state.mistakes, "fout", "fouten");
+    return "Score " + scoring.score + " · " + plural(state.mistakes, "fout", "fouten");
+  }
+
+  function formatShareDate(dateString) {
+    var parts = dateString.split("-").map(Number);
+    var date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 12));
+    return new Intl.DateTimeFormat("nl-NL", {
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    }).format(date);
+  }
+
+  function getShareHost() {
+    if (window.location.hostname && !/^127\.|^localhost$/.test(window.location.hostname)) {
+      return window.location.hostname;
+    }
+    return "4keer3.vercel.app";
   }
 
   function buildShareText() {
@@ -930,7 +1272,7 @@
 
   function getInitialPuzzle() {
     var requested = new URLSearchParams(window.location.search).get("p");
-    return getPuzzleById(requested) || dailyPuzzle;
+    return getVisiblePuzzleById(requested) || dailyPuzzle;
   }
 
   function updateUrl() {
@@ -955,6 +1297,26 @@
       if (sortedPuzzles[i].date <= today) return sortedPuzzles[i];
     }
     return sortedPuzzles[0];
+  }
+
+  function getVisiblePuzzleById(id) {
+    var puzzle = getPuzzleById(id);
+    return isReleasedPuzzle(puzzle) ? puzzle : null;
+  }
+
+  function getReleasedPuzzles() {
+    var today = getAmsterdamDateString(new Date());
+    return sortedPuzzles.filter(function (puzzle) {
+      return puzzle.date <= today;
+    });
+  }
+
+  function getArchivePuzzles() {
+    return archiveFutureUnlocked ? sortedPuzzles : getReleasedPuzzles();
+  }
+
+  function isReleasedPuzzle(puzzle) {
+    return Boolean(puzzle) && puzzle.date <= getAmsterdamDateString(new Date());
   }
 
   function getAmsterdamDateString(date) {

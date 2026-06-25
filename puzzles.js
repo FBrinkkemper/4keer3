@@ -1,12 +1,24 @@
 window.FOUR_KEER_DRIE_PUZZLES = [
   {
+    id: "2026-06-18",
+    date: "2026-06-18",
+    number: 0,
+    special: "maat",
+    categories: [
+      { id: "kleding", label: "Kleding kopen", words: ["maat", "pasvorm", "etiket"] },
+      { id: "afmeting", label: "Afmetingen", words: ["maat", "lengte", "breedte"] },
+      { id: "muziek", label: "In de muziek", words: ["maat", "ritme", "tempo"] },
+      { id: "vriend", label: "Vrienden", words: ["maat", "makker", "kameraad"] }
+    ]
+  },
+  {
     id: "2026-06-19",
     date: "2026-06-19",
     number: 1,
     special: "kop",
     categories: [
-      { id: "dier", label: "Dierlijk lichaam", words: ["kop", "poot", "staart"] },
       { id: "drinken", label: "Drinkgerei", words: ["kop", "mok", "glas"] },
+      { id: "dier", label: "Dierlijk lichaam", words: ["kop", "poot", "staart"] },
       { id: "krant", label: "Op een krantenpagina", words: ["kop", "artikel", "foto"] },
       { id: "tekst", label: "Begin van een tekst", words: ["kop", "aanhef", "titel"] }
     ]
@@ -30,9 +42,9 @@ window.FOUR_KEER_DRIE_PUZZLES = [
     special: "slot",
     categories: [
       { id: "veilig", label: "Beveiliging", words: ["slot", "sleutel", "grendel"] },
-      { id: "einde", label: "Aan het einde", words: ["slot", "climax", "ontknoping"] },
+      { id: "sluiting", label: "Sluitingen", words: ["slot", "rits", "knoop"] },
       { id: "gebouw", label: "Grote gebouwen", words: ["slot", "kasteel", "paleis"] },
-      { id: "sluiting", label: "Sluitingen", words: ["slot", "rits", "knoop"] }
+      { id: "einde", label: "Aan het einde", words: ["slot", "climax", "ontknoping"] }
     ]
   },
   {
@@ -42,9 +54,9 @@ window.FOUR_KEER_DRIE_PUZZLES = [
     special: "ster",
     categories: [
       { id: "hemel", label: "Aan de hemel", words: ["ster", "planeet", "komeet"] },
-      { id: "beroemd", label: "Beroemdheden", words: ["ster", "diva", "idool"] },
       { id: "kerst", label: "Kerstversiering", words: ["ster", "bal", "slinger"] },
-      { id: "waardering", label: "Beoordelingen", words: ["ster", "cijfer", "duim"] }
+      { id: "waardering", label: "Beoordelingen", words: ["ster", "cijfer", "duim"] },
+      { id: "beroemd", label: "Beroemdheden", words: ["ster", "diva", "idool"] }
     ]
   },
   {
@@ -53,10 +65,10 @@ window.FOUR_KEER_DRIE_PUZZLES = [
     number: 5,
     special: "appel",
     categories: [
-      { id: "cda", label: "CDA", words: ["appel", "christen", "democratisch"] },
-      { id: "schilders", label: "Schilders", words: ["appel", "brood", "cremer"] },
       { id: "fruit", label: "Fruit", words: ["appel", "peer", "banaan"] },
-      { id: "oog", label: "Oog", words: ["appel", "bal", "lid"] }
+      { id: "oog", label: "Oog", words: ["appel", "bal", "lid"] },
+      { id: "cda", label: "CDA", words: ["appel", "christen", "democratisch"] },
+      { id: "schilders", label: "Schilders", words: ["appel", "brood", "cremer"] }
     ]
   },
   {
@@ -67,32 +79,56 @@ window.FOUR_KEER_DRIE_PUZZLES = [
     categories: [
       { id: "rond", label: "Ronde dingen", words: ["bal", "knikker", "sinaasappel"] },
       { id: "sport", label: "Op het sportveld", words: ["bal", "racket", "fluitje"] },
-      { id: "chic", label: "Chique bijeenkomsten", words: ["bal", "gala", "receptie"] },
-      { id: "voet", label: "Delen van een voet", words: ["bal", "hiel", "teen"] }
+      { id: "voet", label: "Delen van een voet", words: ["bal", "hiel", "teen"] },
+      { id: "chic", label: "Chique bijeenkomsten", words: ["bal", "gala", "receptie"] }
     ]
-  },
+  }, 
   {
     id: "2026-06-25",
     date: "2026-06-25",
     number: 7,
-    special: "lijn",
+    special: "slurf",
     categories: [
-      { id: "meetkunde", label: "Meetkunde", words: ["lijn", "punt", "vlak"] },
-      { id: "ov", label: "Openbaar vervoer", words: ["lijn", "halte", "overstap"] },
-      { id: "contact", label: "Communicatie", words: ["lijn", "kabel", "verbinding"] },
-      { id: "veld", label: "Sportveld", words: ["lijn", "doel", "middenstip"] }
+      { id: "olifant", label: "Olifantenkenmerken", words: ["slurf", "slagtand", "grijs"] },
+      { id: "cilinders", label: "Cilinders", words: ["slurf", "buis", "pijp"] },
+      { id: "geslachtsdeel", label: "Mannelijk geslachtsdeel", words: ["slurf", "pik", "aubergine"] },
+      { id: "vliegtuig", label: "Vliegtuig-exits", words: ["slurf", "glijbaan", "trap"] }
     ]
   },
   {
     id: "2026-06-26",
     date: "2026-06-26",
     number: 8,
-    special: "maat",
+    special: "heet",
     categories: [
-      { id: "muziek", label: "In de muziek", words: ["maat", "ritme", "tempo"] },
-      { id: "afmeting", label: "Afmetingen", words: ["maat", "lengte", "breedte"] },
-      { id: "vriend", label: "Vrienden", words: ["maat", "makker", "kameraad"] },
-      { id: "kleding", label: "Kleding kopen", words: ["maat", "pasvorm", "etiket"] }
+      { id: "smaak", label: "Pittige smaak", words: ["heet", "pittig", "scherp"] },
+      { id: "sauna", label: "Sauna", words: ["heet", "fins", "rust"] },
+      { id: "knap", label: "Aantrekkelijk", words: ["heet", "mooi", "schoon"] },
+      { id: "eet", label: "Rijmt op -eet", words: ["heet", "scheet", "kreet"] }
+    ]
+  },
+  {
+    id: "2026-06-27",
+    date: "2026-06-27",
+    number: 9,
+    special: "gang",
+    categories: [
+      { id: "huis", label: "Ruimte in je huis", words: ["gang", "hal", "doorloop"] },
+      { id: "groepen", label: "Groepen", words: ["gang", "bende", "kliek"] },
+      { id: "stoel", label: "Stoel__", words: ["gang", "poot", "mat"] },
+      { id: "restaurant", label: "Dingen in een restaurant", words: ["gang", "wijnkaart", "amuse"] }
+    ]
+  },
+ {
+    id: "2026-06-28",
+    date: "2026-06-28",
+    number: 10,
+    special: "lijn",
+    categories: [
+      { id: "meetkunde", label: "Meetkunde", words: ["lijn", "punt", "vlak"] },
+      { id: "ov", label: "Openbaar vervoer", words: ["lijn", "halte", "overstap"] },
+      { id: "contact", label: "Communicatie", words: ["lijn", "kabel", "verbinding"] },
+      { id: "veld", label: "Sportveld", words: ["lijn", "doel", "middenstip"] }
     ]
   }
 ];
