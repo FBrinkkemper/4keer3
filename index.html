@@ -37,12 +37,6 @@
           <div class="dot-meter mistake-meter" id="mistakeLabel" aria-label="Fouten"></div>
         </section>
 
-        <section class="controls" aria-label="Acties">
-          <button id="shuffleButton" class="control-button" type="button">Schud</button>
-          <button id="deselectButton" class="control-button" type="button">Deselecteer</button>
-          <button id="submitButton" class="control-button primary" type="button">Verstuur</button>
-        </section>
-
         <section class="modal result-panel" id="resultPanel" aria-hidden="true" hidden>
           <div class="result-card" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
             <div class="modal-head">
@@ -55,7 +49,6 @@
               <canvas id="sharePreviewCanvas" width="1024" height="1024"></canvas>
             </div>
             <div class="share-actions">
-              <button id="shareButton" class="control-button" type="button">Deel tekst</button>
               <button id="shareImageButton" class="control-button primary" type="button">Deel afbeelding</button>
             </div>
           </div>
@@ -73,12 +66,15 @@
     </div>
 
     <div class="modal" id="archiveModal" aria-hidden="true">
-      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="archiveTitle">
+      <div class="modal-card archive-card" role="dialog" aria-modal="true" aria-labelledby="archiveTitle">
         <div class="modal-head">
           <h2 id="archiveTitle" class="quiet-trigger">Archief</h2>
           <button class="close-button" data-close-modal type="button" aria-label="Sluiten">×</button>
         </div>
         <div class="archive-list" id="archiveList"></div>
+        <div class="archive-actions">
+          <button id="resetScoresButton" class="archive-reset-button" type="button">Reset scores</button>
+        </div>
       </div>
     </div>
 

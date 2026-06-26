@@ -7,9 +7,16 @@
   var MAX_SELECTION = 3;
   var GROUP_COLORS = ["groen", "geel", "blauw", "paars"];
   var GROUP_SHADE_COLORS = ["#d9eddf", "#f8ebaa", "#dcecff", "#eee4ff"];
+  var GROUP_CONFETTI_COLORS = [
+    ["#6ba784", "#226150", "#d9eddf"],
+    ["#f3bd13", "#ad7a12", "#fff0a6"],
+    ["#5b8de8", "#194d72", "#dcecff"],
+    ["#9b69df", "#5d3da6", "#eee4ff"]
+  ];
   var locked = false;
   var archiveFutureUnlocked = false;
   var archiveLongPressTimer = null;
+  var resetScoresConfirmTimer = null;
   var temporaryMessageTimer = null;
   var resultFlairTimer = null;
 
@@ -22,9 +29,6 @@
     solvedGroups: document.getElementById("solvedGroups"),
     tileGrid: document.getElementById("tileGrid"),
     message: document.getElementById("message"),
-    shuffleButton: document.getElementById("shuffleButton"),
-    deselectButton: document.getElementById("deselectButton"),
-    submitButton: document.getElementById("submitButton"),
     todayButton: document.getElementById("todayButton"),
     archiveButton: document.getElementById("archiveButton"),
     resultPanel: document.getElementById("resultPanel"),
@@ -32,11 +36,11 @@
     resultText: document.getElementById("resultText"),
     scoreBreakdown: document.getElementById("scoreBreakdown"),
     sharePreviewCanvas: document.getElementById("sharePreviewCanvas"),
-    shareButton: document.getElementById("shareButton"),
     shareImageButton: document.getElementById("shareImageButton"),
     archiveModal: document.getElementById("archiveModal"),
     archiveTitle: document.getElementById("archiveTitle"),
     archiveList: document.getElementById("archiveList"),
+    resetScoresButton: document.getElementById("resetScoresButton"),
     scoringButton: document.getElementById("scoringButton"),
     scoringModal: document.getElementById("scoringModal")
   };
@@ -73,14 +77,6 @@
       }
     });
 
-    els.shuffleButton.addEventListener("click", shuffleBoard);
-    els.deselectButton.addEventListener("click", function () {
-      state.selected = [];
-      saveState();
-      render();
-      setMessage("Selectie gewist.", "neutral");
-    });
-    els.submitButton.addEventListener("click", submitGuess);
     els.todayButton.addEventListener("click", function () {
       switchPuzzle(dailyPuzzle.id);
     });
@@ -92,8 +88,8 @@
     els.scoringButton.addEventListener("click", function () {
       openModal(els.scoringModal);
     });
-    els.shareButton.addEventListener("click", copyShareText);
     els.shareImageButton.addEventListener("click", shareResultImage);
+    els.resetScoresButton.addEventListener("click", resetScores);
     els.archiveTitle.addEventListener("pointerdown", startArchiveLongPress);
     els.archiveTitle.addEventListener("pointerup", cancelArchiveLongPress);
     els.archiveTitle.addEventListener("pointerleave", cancelArchiveLongPress);
@@ -145,10 +141,6 @@
 
     renderSolvedGroups();
     renderTiles();
-
-    els.shuffleButton.disabled = locked || complete || getBoardWords().length < 2;
-    els.deselectButton.disabled = locked || state.selected.length === 0 || complete;
-    els.submitButton.disabled = locked || state.selected.length !== MAX_SELECTION || complete;
 
     if (complete) {
       var scoring = getScoringResult(state, currentPuzzle);
@@ -280,10 +272,11 @@
     render();
 
     if (state.selected.length === MAX_SELECTION) {
-      setMessage("Klaar om te versturen.", "neutral");
-    } else {
-      setMessage("Kies drie woorden die bij elkaar horen.", "neutral");
+      submitGuess();
+      return;
     }
+
+    setMessage("Kies drie woorden die bij elkaar horen.", "neutral");
   }
 
   function submitGuess() {
@@ -299,6 +292,7 @@
     if (match) {
       locked = true;
       animateSelected("correct");
+      launchGroupConfetti(getCategoryColorIndex(currentPuzzle, match.id));
       setMessage("Gevonden: " + match.label + ".", "success");
 
       window.setTimeout(function () {
@@ -365,17 +359,6 @@
       }
     });
     state.order = getSolvedLayoutOrder(state.order, currentPuzzle, state);
-  }
-
-  function shuffleBoard() {
-    if (locked || isComplete()) return;
-    ensureStarted();
-    var previousPositions = getTilePositions();
-    state.order = getSolvedLayoutOrder(shuffle(state.order.slice(), Math.random), currentPuzzle, state);
-    saveState();
-    render();
-    animateTileMoves(previousPositions);
-    setMessage("Woorden geschud.", "neutral");
   }
 
   function ensureStarted() {
@@ -783,6 +766,47 @@
     });
   }
 
+  function launchGroupConfetti(colorIndex) {
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    var selected = els.tileGrid.querySelectorAll(".tile.selected");
+    if (!selected.length) return;
+
+    var colors = GROUP_CONFETTI_COLORS[colorIndex] || GROUP_CONFETTI_COLORS[0];
+    var layer = document.createElement("div");
+    layer.className = "group-confetti";
+    layer.setAttribute("aria-hidden", "true");
+    document.body.appendChild(layer);
+
+    selected.forEach(function (tile) {
+      var rect = tile.getBoundingClientRect();
+      var centerX = rect.left + rect.width / 2;
+      var centerY = rect.top + rect.height / 2;
+
+      for (var index = 0; index < 10; index += 1) {
+        var angle = Math.random() * Math.PI * 2;
+        var distance = 28 + Math.random() * 58;
+        var piece = document.createElement("span");
+        piece.className = "confetti-piece";
+        if (index % 3 === 0) piece.classList.add("round");
+        piece.style.left = centerX + "px";
+        piece.style.top = centerY + "px";
+        piece.style.setProperty("--confetti-color", colors[index % colors.length]);
+        piece.style.setProperty("--x", Math.cos(angle) * distance + "px");
+        piece.style.setProperty("--y", Math.sin(angle) * distance - 26 + "px");
+        piece.style.setProperty("--fall", 20 + Math.random() * 30 + "px");
+        piece.style.setProperty("--rotate", (120 + Math.random() * 300) + "deg");
+        piece.style.setProperty("--size", 5 + Math.random() * 5 + "px");
+        piece.style.animationDelay = Math.random() * 90 + "ms";
+        layer.appendChild(piece);
+      }
+    });
+
+    window.setTimeout(function () {
+      layer.remove();
+    }, 1050);
+  }
+
   function renderArchive() {
     els.archiveList.innerHTML = "";
 
@@ -820,6 +844,46 @@
       return "Bezig · " + saved.solvedCategoryIds.length + "/4";
     }
     return "Niet gestart";
+  }
+
+  function resetScores() {
+    if (!els.resetScoresButton.classList.contains("confirm")) {
+      els.resetScoresButton.classList.add("confirm");
+      els.resetScoresButton.textContent = "Zeker resetten?";
+      if (resetScoresConfirmTimer) window.clearTimeout(resetScoresConfirmTimer);
+      resetScoresConfirmTimer = window.setTimeout(resetResetScoresButton, 2600);
+      return;
+    }
+
+    try {
+      for (var index = window.localStorage.length - 1; index >= 0; index -= 1) {
+        var key = window.localStorage.key(index);
+        if (key && key.indexOf(STORAGE_PREFIX) === 0) {
+          window.localStorage.removeItem(key);
+        }
+      }
+    } catch (error) {
+      resetResetScoresButton();
+      setMessage("Scores resetten lukte niet in deze browser.", "warn");
+      return;
+    }
+
+    locked = false;
+    state = createState(currentPuzzle);
+    wasCompleteOnLastRender = false;
+    resetResetScoresButton();
+    render();
+    renderArchive();
+    setMessage("Scores gereset.", "neutral");
+  }
+
+  function resetResetScoresButton() {
+    if (resetScoresConfirmTimer) {
+      window.clearTimeout(resetScoresConfirmTimer);
+      resetScoresConfirmTimer = null;
+    }
+    els.resetScoresButton.classList.remove("confirm");
+    els.resetScoresButton.textContent = "Reset scores";
   }
 
   function openModal(modal) {
@@ -863,36 +927,8 @@
     if (modal === els.archiveModal) {
       archiveFutureUnlocked = false;
       cancelArchiveLongPress();
+      resetResetScoresButton();
     }
-  }
-
-  function copyShareText() {
-    var text = buildShareText();
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () {
-        setTemporaryMessage("Resultaat gekopieerd.", "success");
-      }).catch(function () {
-        fallbackCopy(text);
-      });
-      return;
-    }
-    fallbackCopy(text);
-  }
-
-  function fallbackCopy(text) {
-    var textarea = document.createElement("textarea");
-    textarea.value = text;
-    textarea.setAttribute("readonly", "");
-    textarea.className = "copy-buffer";
-    document.body.appendChild(textarea);
-    textarea.select();
-    try {
-      document.execCommand("copy");
-      setTemporaryMessage("Resultaat gekopieerd.", "success");
-    } catch (error) {
-      setTemporaryMessage("Kopieren lukte niet automatisch.", "error");
-    }
-    textarea.remove();
   }
 
   function shareResultImage() {
