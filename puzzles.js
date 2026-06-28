@@ -142,5 +142,29 @@ window.FOUR_KEER_DRIE_PUZZLES = [
       { id: "aat", label: "__aat", words: ["advocaat", "graat", "piraat"] },
       { id: "dick", label: "Achternamen van Dick", words: ["advocaat", "schoof", "Jol"] }
     ]
+  },
+  {
+    id: "2026-06-30",
+    date: "2026-06-30",
+    number: 12,
+    special: "safari",
+    categories: [
+      { id: "park", label: "__ park", words: ["safari", "Kruger", "volks"] },
+      { id: "afrikaans", label: "Afrikaans met een S", words: ["safari", "savanne", "sahara"] },
+      { id: "drank", label: "Drank toen je 16 was", words: ["safari", "breezer", "passoa"] },
+      { id: "mamma", label: "Van 'mamma woar is mien pils'", words: ["safari", "trouwen", "feesten"] }
+    ]
+  },
+  {
+    id: "2026-07-01",
+    date: "2026-07-01",
+    number: 13,
+    special: "spoor",
+    categories: [
+      { id: "per-spoor", label: "Per spoor - Meeuwis", words: ["spoor", "kilometers", "schieten"] },
+      { id: "crime-scene", label: "Crime scene", words: ["spoor", "afdruk", "bloedvlek"] },
+      { id: "rails", label: "Rails", words: ["spoor", "biels", "staal"] },
+      { id: "rem", label: "Rem__", words: ["spoor", "schijf", "brandt"] }
+    ]
   }
 ];
